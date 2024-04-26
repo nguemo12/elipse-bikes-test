@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Velo Web Project</title>
+    <style>
+        .card {
+            width: calc(33% - 20px);
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        #search-box {
+            width: 200px;
+            padding: 5px;
+            margin: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        #search-button {
+            padding: 5px 10px;
+            margin: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+       
+
+       
+    </style>
+</head>
+
+<body>
+    <h1>Elipse Bikes Test</h1>
+    <div style="justify-content: center; align-items: center;">
+        <input type="text" id="search-box" placeholder="Search by Town, Bikes, or Place">
+        <button id="search-button">Search</button>
+    </div>
+    <div id="map" style="width:100%;height:80vh;"></div>
+   
+    <div id="wrapper">
+
+    </div>
+
+    
+    
+
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="constants.js"></script>
+    <link rel="stylesheet" href="../frontend/leaflet/leaflet.css" />
+    <script src="../frontend/leaflet/leaflet.js"></script>
+    <script>
+        const socket = io(socket_endpoint);
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            socket.emit('message', 'Hello from client');
+        });
+        socket.on('response', (data) => {
+            console.log('Response from server:', data);
+        });
+
+        // trigger fetch live data
+        socket.emit('getLiveApiData', '');
+
+        // reading data from api live
+        socket.on('api_refresh', (data) => {
+            console.log(data?.data?.data)
+            let list = data?.data?.data.splice(0,20);
+            let wrapper = document.getElementById('wrapper');
+            let ul = document.createElement('ul');
+            let str = `<ul><hr width='100%' />`
+
+
+
+            list.forEach((item, index) => {
+                str += `<div class="card">`;
+                Object.keys(item).forEach((key, index) => {
+                    str += `<p><strong>${key}:</strong> ${item[key]}</p>`;
+                });
+                str += `</div>`;
+            });
+
+            var searchBox = document.getElementById('search-box');
+            var searchButton = document.getElementById('search-button');
+
+            function filterData(searchTerm) {
+                searchTerm = searchTerm.toLowerCase();
+                var filteredData = list.filter(function (item) {
+                    return (
+                        item.contract_name.toLowerCase().includes(searchTerm) ||
+                        item.name.toLowerCase().includes(searchTerm) ||
+                        (item.available_bikes.toString().includes(searchTerm) && searchTerm.match(/^\d+$/)) // Only match digits for bike numbers
+                    );
+                });
+                console.log(filteredData)
+                return filteredData;
+            }
+
+            // Function to update markers based on filtered data
+            function updateMarkers(filteredData) {
+                // Clear existing markers (optional)
+                map.eachLayer(function (layer) {
+                    if (layer instanceof L.marker) {
+                        map.removeLayer(layer);
+                    }
+                });
+
+                // Create markers for filtered data
+                filteredData.forEach(function (item) {
+                    var bikeIcon = L.icon({
+                        iconUrl: '../frontend/leaflet/images/bike.png',
+                        iconSize: [60, 60],
+                        iconAnchor: [16, 32],
+                        popupAnchor: [-0, -32]
+                    });
+
+                    if (typeof item.position === 'object' && 'lat' in item.position && 'lng' in item.position) {
+                        var marker = L.marker([item.position.lat, item.position.lng], { icon: bikeIcon }).addTo(map);
+
+                        var popupContent = "<b>" + item.name + "</b><br>";
+                        popupContent += "Ville: " + item.contract_name + "<br>";
+                        popupContent += "Available bikes: " + item.available_bikes + "<br>";
+                        popupContent += "number: " + item.number + "<br>";
+                        popupContent += "Status: " + item.status + "<br>";
+                        popupContent += "last_updated: " + item.last_update
+                        marker.bindPopup(popupContent).openPopup();
+
+                    }
+
+                });
+                str += '</ul>'
+            }
+
+            // Search button click event handler
+            searchButton.addEventListener('click', function () {
+                var searchTerm = searchBox.value;
+
+                var filteredData = filterData(searchTerm);
+                console.log(filteredData)
+                updateMarkers(filteredData);
+            });
+
+            // Initial markers (optional)
+            updateMarkers(list); // Display all markers initially
+            wrapper.innerHTML = str;
+
+            // to refresh the api every x-second 
+            // this block of code will trigger the real time to fetch back the data every 3 seconds after the previous fetch
+            setTimeout(() => {
+                socket.emit('getLiveApiData', '');
+            }, 6000)
+        })
+
+    </script>
+
+    <script>
+        var map = L.map('map').setView([51.505, -0.09], 13); // Replace with your desired center coordinates (latitude, longitude) and zoom level
+
+        // Load a tile layer (e.g., OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+    </script>
+
+</body>
+
+</html>
