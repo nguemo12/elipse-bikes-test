@@ -1,4 +1,16 @@
-# Aperçu du Projet : Intégration de l'API JCdecaux avec des Webhooks en Temps Réel
+# Aperçu du Projet : Intégration de l'API JCdecaux avec des Webhooks en Temps Réel pour le test Ellipse Bikes
+
+**Partie theorique**
+
+La partie théorique ce trouve sur ce fichier
+
+```
+
+Ellipsebikestest-fr.pdf
+
+```
+
+**Partie Pratique**
 
 **Étape 1 : Compréhension du Projet**
 
